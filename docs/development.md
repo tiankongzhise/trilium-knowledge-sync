@@ -69,7 +69,7 @@ trilium-knowledge-sync
 
 ## CI/CD
 
-- `ci.yml`：Ubuntu + Windows 验证；Python 3.9 兼容性任务固定在 `ubuntu-22.04`（新版 Ubuntu runner 不再提供该版本），另用 `3.x` 跟踪当前稳定 Python。
+- `ci.yml`：Ubuntu + Windows 验证；Python 3.9 兼容性任务固定在 `ubuntu-24.04`（Ubuntu 26.04 runner 不再提供该版本，而 22.04 已进入弃用周期），另用 `3.x` 跟踪当前稳定 Python。
 - GitHub Actions 使用 `actions/checkout@v7` 与 `actions/setup-python@v7`（Node 24 runtime）。
 - `release.yml`：tag 触发，运行验证并创建 release artifact。
 
