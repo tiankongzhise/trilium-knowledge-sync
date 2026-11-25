@@ -1,5 +1,16 @@
 # trilium-knowledge-sync
 
+> ⚠️ **贡献者身份约定**（Author Identity Policy）
+> 记录于 2026-11-25，触发场景：首次 push origin main，未检出名单外作者。
+> 约定：push 前必须统一作者
+> 允许身份：notebook <tiankongzhise@163.com>
+> 修改约定请直接编辑本行。
+
+> ⚠️ **AI 署名约定**（AI Signature Policy）
+> 记录于 2026-11-25，触发场景：首次 push origin main，未检出 AI 署名。
+> 约定：push 前必须剥离署名
+> 修改约定请直接编辑本行。
+
 ## 项目说明
 
 本仓库是 `trilium-knowledge-sync` skill 的唯一开发源头。其他 agent 必须通过 junction/symlink 链接使用 `skill/trilium-knowledge-sync/`，不得复制 skill 到各个 agent 目录形成多份副本。
