@@ -73,7 +73,7 @@ trilium-knowledge-sync
 - GitHub Actions 使用 `actions/checkout@v7` 与 `actions/setup-python@v7`（Node 24 runtime）。
 - `release.yml`：tag 触发，运行验证并创建 release artifact。
 
-仓库规则要求所有变更通过 topic branch + PR 进入 `main`，且 CI 全部成功后才能合并；禁止本地直接提交或 push `main`。远端 GitHub branch protection/rule set 仍应由仓库 owner 配置为强制 enforcement。
+仓库规则要求所有变更通过 topic branch + PR 进入 `main`，且 CI 全部成功后才能合并；禁止本地直接提交或 push `main`。远端 `main` 已配置 branch protection（2026-11-25 生效）：强制 PR、要求 ci.yml 全部 7 个任务 success、strict up-to-date、对 admin 同样生效、禁止 force push 与删除分支。修改保护配置或 CI 任务命名时，必须同步更新本节与保护配置中的 required contexts。
 
 ## 发布建议
 
