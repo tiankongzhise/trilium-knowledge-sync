@@ -19,6 +19,7 @@
 - `tests/test_validate_repo.py` 覆盖文档治理校验逻辑。
 - `tools/verify.py` 统一本地验证入口，替代散落在五份文档中的逐字命令清单；CI 各步骤改经同一入口执行。
 - `.github/PULL_REQUEST_TEMPLATE.md` 增加文档治理核对清单。
+- 发布策略确立为发版 PR 制：版本号以 helper 的 `VERSION` 常量为真相源，tag 与 CHANGELOG 必须一致；见 `docs/development.md`「发布流程」。
 
 ### Changed
 

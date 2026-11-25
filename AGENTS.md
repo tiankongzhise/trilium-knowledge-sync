@@ -105,7 +105,7 @@ python tools/verify.py
 ## Git 注意
 
 - 不要提交 token、真实凭据、临时导出的笔记内容或本机隐私路径。
-- 不要向远端 push，除非用户明确要求。
+- 不要向远端 push，除非用户明确要求。push tag 适用同一规则；发版流程见 `docs/development.md`「发布流程」。
 - 不得直接在 `main` 上提交或 push。标准变更流程：
 
 ```bash

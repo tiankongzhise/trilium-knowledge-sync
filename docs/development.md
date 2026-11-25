@@ -65,11 +65,17 @@ trilium-knowledge-sync
 
 仓库规则要求所有变更通过 topic branch + PR 进入 `main`，且 CI 全部成功后才能合并；禁止本地直接提交或 push `main`。branch protection 的当前配置事实（required checks、生效日期等）属于时效性状态，以 [PROJECT_STATE.md](PROJECT_STATE.md) 为准。修改 CI 任务命名或增删任务时，必须同步更新远端保护配置中的 required contexts，并在同一轮操作中更新登记处。
 
-## 发布建议
+## 发布流程
 
-1. 更新 `CHANGELOG.md`
-2. 运行全部验证
-3. 创建 tag，例如 `v0.1.0`
-4. push tag 后检查 release workflow
+发布策略（2026-11-25 由仓库 owner 确定）：
 
-发布策略与远端仓库现状以 [PROJECT_STATE.md](PROJECT_STATE.md) 为准；登记处显示策略未确定时，需仓库 owner 明确指示后再发布。
+1. **触发**：仅当仓库 owner 在当前对话明确要求发版并给出版本号。agent 不自行提议发版或版本号。push tag 与普通 push 适用同一授权规则。
+2. **版本号真相源**是 `skill/trilium-knowledge-sync/scripts/trilium_etapi.py` 中的 `VERSION` 常量；tag 必须等于 `v${VERSION}`，CHANGELOG 最新小节与之一致。三处不一致的发版视为失败发版，需修正后重走流程。
+3. **流程**：
+   1. 发版 PR：更新 CHANGELOG（把 Unreleased 内容归入新版本小节）、同步 `VERSION`、运行全量验证。
+   2. CI 全绿后合并进 `main`。
+   3. 从 `main` 最新 commit 创建 tag（`git tag v<VERSION>`）并 push。
+   4. 检查 release workflow 产物与 GitHub Release 页面。
+4. 0.x 阶段不承诺兼容性，但 breaking change 必须在 CHANGELOG 明确标注。
+
+`release.yml` 在 `v*.*.*` tag push 时自动执行验证、打包全仓库 zip 并创建 Release。
