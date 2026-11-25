@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build / release artifacts
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Local test output
+tmp/
+tmp*/
+*.tmp
+*.log
+
+# Secrets and local credentials — never commit these
+*.pem
+*.key
+*.crt
+*.pfx
+*token*.txt
+*secret*.txt
+.env
+.env.*
+!.env.example
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Windows installer runtime artifacts
+*.stackdump

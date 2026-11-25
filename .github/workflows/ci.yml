@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.9', '3.x']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Validate repository structure
+        run: python tools/validate_repo.py
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Compile helper
+        run: python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+
+      - name: Check Bash syntax
+        shell: bash
+        run: bash -n install.sh
+
+      - name: Check PowerShell syntax
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw .\install.ps1), [ref]$errors)
+          if ($errors.Count) { $errors; exit 1 }
+
+  install-smoke-bash:
+    name: bash install smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Exercise install.sh in an isolated home
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/home" "$tmp/appdata"
+          export HOME="$tmp/home"
+          export USERPROFILE="$tmp/home"
+          export APPDATA="$tmp/appdata"
+
+          bash ./install.sh
+          bash ./install.sh
+          bash ./install.sh --uninstall
+
+          name='trilium-knowledge-sync'
+          for target in \
+            "$HOME/.agents/skills/$name" \
+            "$APPDATA/devin/skills/$name" \
+            "$HOME/.codex/skills/$name" \
+            "$HOME/.claude/skills/$name"; do
+            if [ -e "$target" ] || [ -L "$target" ]; then
+              echo "uninstall left target behind: $target" >&2
+              exit 1
+            fi
+          done
+          test -f "skill/$name/SKILL.md"
+
+  install-smoke-powershell:
+    name: PowerShell install smoke
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Exercise install.ps1 in an isolated profile
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tmp = Join-Path $env:TEMP ("tks-install-" + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path "$tmp\home", "$tmp\appdata" -Force | Out-Null
+          $oldUserProfile = $env:USERPROFILE
+          $oldAppData = $env:APPDATA
+          try {
+            $env:USERPROFILE = "$tmp\home"
+            $env:APPDATA = "$tmp\appdata"
+            .\install.ps1
+            .\install.ps1
+            .\install.ps1 -Uninstall
+
+            $name = 'trilium-knowledge-sync'
+            $targets = @(
+              "$env:USERPROFILE\.agents\skills\$name",
+              "$env:APPDATA\devin\skills\$name",
+              "$env:USERPROFILE\.codex\skills\$name",
+              "$env:USERPROFILE\.claude\skills\$name"
+            )
+            foreach ($target in $targets) {
+              if (Test-Path $target) { throw "uninstall left target behind: $target" }
+            }
+            if (-not (Test-Path ".\skill\$name\SKILL.md")) { throw 'source skill missing after smoke test' }
+          } finally {
+            $env:USERPROFILE = $oldUserProfile
+            $env:APPDATA = $oldAppData
+            if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+          }

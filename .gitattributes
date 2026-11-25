@@ -1,0 +1,18 @@
+# Cross-platform line endings
+* text=auto eol=lf
+
+# Windows scripts should keep CRLF when checked out on Windows
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell/Python files use LF
+*.sh text eol=lf
+*.py text eol=lf
+
+# Archives/binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
