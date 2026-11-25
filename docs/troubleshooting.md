@@ -63,7 +63,22 @@ list-children '<parentNoteId>'
 find-child '<parentNoteId>' '<exact-title>'
 ```
 
-标题匹配是精确匹配，不会忽略大小写、空格或全半角差异。
+标题匹配是精确匹配，不会忽略大小写、空格或全半角差异。`find-child` 输出数组：空数组表示无匹配，多个元素表示存在同名重复。
+
+## `upsert-note refused: ... has N non-deleted children titled ...`
+
+含义：同一父笔记下存在多个同名未删除笔记。helper 拒绝静默选择，这不是故障，是刻意保护——选错目标意味着覆盖错误的用户笔记。
+
+处理：
+
+1.  stderr 中每个候选都有 `noteId` 及 `type`/`mime`/`utcDateModified` 等辨识信息；再用 `get-note '<noteId>'` 或 `get-content` 查看具体内容区分哪篇是哪篇。
+2. 在 Trilium UI 中人工处理重复：重命名、移动或删除多余副本（helper 不提供删除命令）。
+3. 处理完后重试 upsert；或者如果明确知道要更新哪一篇，直接用精确 noteId 执行 `put-content` / `patch-note` 定点操作。
+4. 向用户报告时给出每个 noteId 对应哪篇笔记，由用户确认迁移方式。
+
+## 写入成功但进了错误的知识库（多实例）
+
+同时运行多个 Trilium 实例时，`healthcheck-url` 自动发现指向不确定，写入可能进错实例且核验照样通过。多实例环境必须显式 `--base-url`，见 [configuration.md](configuration.md) 的多实例警告。
 
 ## 写入成功但 Trilium UI 没看到
 

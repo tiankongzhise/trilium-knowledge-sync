@@ -12,7 +12,7 @@ trilium-knowledge-sync/SKILL.md
   ├─ 约束 note type / MIME / 幂等 / 核验 / 禁止事项
   ↓
 scripts/trilium_etapi.py
-  ├─ 解析 token source（win-cred/file/env/stdin）
+  ├─ 解析 token source（win-cred/file/env）
   ├─ 发现 ETAPI endpoint
   ├─ 调用 Trilium ETAPI
   ↓

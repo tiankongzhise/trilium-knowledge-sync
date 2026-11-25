@@ -74,7 +74,7 @@
 
 | ID | 需求 | 优先级 |
 |---|---|---|
-| FR-1 | 支持 win-cred/file/env/stdin 四类 token 位置 | Must |
+| FR-1 | 支持 win-cred/file/env 三类 token 位置；拒绝 stdin 与字面 token | Must |
 | FR-2 | 自动或显式解析 ETAPI endpoint | Must |
 | FR-3 | 支持 app-info、get/list/search/find | Must |
 | FR-4 | 支持 create/patch/put-content/upsert | Must |

@@ -101,6 +101,7 @@ trilium-knowledge-sync/
 - [安全模型](docs/security.md)
 - [架构说明](docs/architecture.md)
 - [项目发现](docs/PROJECT_DISCOVERY.md)
+- [项目状态登记处](docs/PROJECT_STATE.md)
 - [产品需求](docs/PRD.md)
 - [测试计划](docs/TEST_PLAN.md)
 - [开发指南](docs/development.md)
@@ -113,12 +114,10 @@ trilium-knowledge-sync/
 ## 本地验证
 
 ```bash
-python tools/validate_repo.py
-python -m unittest discover -s tests -v
-bash -n install.sh
+python tools/verify.py
 ```
 
-Windows 还会验证 `install.ps1` 的 PowerShell 语法；CI 中同时跑 Ubuntu 与 Windows。
+包含仓库结构与文档治理校验、单元测试、helper 编译、Bash/PowerShell 语法检查；CI 中同时跑 Ubuntu 与 Windows。
 
 ## 许可证
 

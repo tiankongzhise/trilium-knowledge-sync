@@ -7,33 +7,24 @@
 | 仓库结构校验 | 必要文件、SKILL frontmatter、安全硬规则、文档链接 | 自动化 |
 | Python 单元测试 | token source、endpoint、HTTP client、upsert、verification | 自动化 |
 | mock ETAPI 集成测试 | CLI 子进程端到端 create/upsert/update/readback | 自动化 |
-| 安装脚本 smoke test | 临时 HOME/APPDATA 中 install/reinstall/uninstall | CI 自动化 |
+| 安装脚本 smoke test | 临时 HOME/APPDATA 中 install/reinstall/uninstall；隔离 target root 中删除路径全覆盖：副本无 force 不动、`-f/-Force` 替换为链接、uninstall 无 force 保留副本、有 force 删除副本、无 SKILL.md 目录守卫不删 | CI 自动化 |
 | PowerShell/Bash 语法 | `install.ps1`、`install.sh` | CI 自动化 |
 | 真实 Trilium 验证 | 用户本机 token + 真实 ETAPI | 手动/受控验证 |
 
 ## 本地命令
 
 ```bash
-python tools/validate_repo.py
-python -m unittest discover -s tests -v
-bash -n install.sh
-python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+python tools/verify.py
 ```
 
-Windows PowerShell：
-
-```powershell
-$errors = $null
-[void][System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw .\install.ps1), [ref]$errors)
-if ($errors.Count) { $errors; exit 1 }
-```
+`verify.py` 统一运行全部本地检查（仓库结构与文档治理校验、单元测试、helper 编译、Bash/PowerShell 语法），命令细节以脚本为唯一权威；传入选项名可只跑子集，见 `python tools/verify.py` 的用法说明。
 
 ## 单元测试重点
 
 ### token source
 
-- env/file/stdin 正常读取
-- 字面 token 被拒绝
+- env/file 正常读取
+- 字面 token 与 stdin 通道被拒绝
 - 空位置、空变量、空白 token 被拒绝
 - Windows credential blob UTF-16LE/UTF-8 解码
 - `win-cred` 不要求或尝试变体名
@@ -100,7 +91,7 @@ if ($errors.Count) { $errors; exit 1 }
 ## 发布前冒烟
 
 - CI 全绿。
-- `quick_validate.py` 或等价 skill validator 通过。
+- `tools/validate_repo.py`（仓库结构与 SKILL 校验）通过。
 - CHANGELOG 已更新。
 - tag 版本与 release artifact 命名正确。
 - 压缩包不包含 token、临时文件、`__pycache__` 或本机隐私路径。

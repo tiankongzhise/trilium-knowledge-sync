@@ -2,7 +2,7 @@
 """Small Trilium ETAPI client used by the trilium-knowledge-sync skill.
 
 The CLI intentionally accepts only token *locations* (file/env/Windows Credential
-Manager/stdin), never literal token values. It uses only Python's standard library.
+Manager), never literal token values. It uses only Python's standard library.
 """
 
 from __future__ import annotations
@@ -167,9 +167,7 @@ def resolve_token(source: str) -> str:
     if not source or not source.strip():
         raise TokenResolutionError("Missing token source")
 
-    if source == "stdin":
-        token = sys.stdin.read().strip()
-    elif source.startswith("env:"):
+    if source.startswith("env:"):
         name = source[4:].strip()
         if not name:
             raise TokenResolutionError("env token source requires a variable name")
@@ -191,7 +189,7 @@ def resolve_token(source: str) -> str:
         token = read_windows_credential(target).strip()
     else:
         raise TokenResolutionError(
-            "Unsupported token source. Use win-cred:<target>, file:<path>, env:<name>, or stdin. "
+            "Unsupported token source. Use win-cred:<target>, file:<path>, or env:<name>. "
             "Literal token values are not accepted."
         )
 
@@ -422,13 +420,27 @@ class TriliumClient:
             raise TriliumSyncError("patch-note requires at least one field")
         return self.request("PATCH", self.note_path(note_id), payload)
 
-    def find_child(self, parent_id: str, title: str) -> Optional[dict[str, Any]]:
+    def find_children(self, parent_id: str, title: str) -> list[dict[str, Any]]:
+        """All non-deleted direct children with this exact title, in branch order."""
         parent = self.get_note(parent_id)
+        matches = []
         for child_id in parent.get("childNoteIds", []):
             child = self.get_note(child_id)
             if child.get("title") == title and not child.get("isDeleted"):
-                return child
-        return None
+                matches.append(child)
+        return matches
+
+    @staticmethod
+    def describe_note(note: dict[str, Any]) -> str:
+        parts = [f"noteId={note.get('noteId')}"]
+        for key in ("type", "mime", "utcDateModified", "utcDateCreated", "dateModified", "dateCreated"):
+            value = note.get(key)
+            if value:
+                parts.append(f"{key}={value}")
+        child_ids = note.get("childNoteIds") or []
+        if child_ids:
+            parts.append(f"children={len(child_ids)}")
+        return " ".join(parts)
 
     def list_children(self, parent_id: str) -> list[dict[str, Any]]:
         parent = self.get_note(parent_id)
@@ -482,7 +494,19 @@ class TriliumClient:
         position: Optional[int] = None,
         expanded: Optional[bool] = None,
     ) -> dict[str, Any]:
-        existing = self.find_child(parent_id, title)
+        matches = self.find_children(parent_id, title)
+        if len(matches) > 1:
+            lines = [
+                f"upsert-note refused: parent {parent_id} has {len(matches)} non-deleted children titled {title!r}.",
+                "Not choosing one silently. Candidates:",
+            ]
+            lines += [f"  - {self.describe_note(note)}" for note in matches]
+            lines.append(
+                "Resolve the duplicates in Trilium (rename, move or delete in the Trilium UI) and retry; "
+                "or update one specific note by exact noteId using patch-note/put-content."
+            )
+            raise TriliumSyncError("\n".join(lines))
+        existing = matches[0] if matches else None
         desired_hash = sha256_text(normalize_lf(content))
         if existing:
             note_id = existing["noteId"]
@@ -534,7 +558,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--token-source",
-        help="Token location: win-cred:<target>, file:<path>, env:<name>, or stdin. May also use TRILIUM_TOKEN_SOURCE.",
+        help="Token location: win-cred:<target>, file:<path>, or env:<name>. May also use TRILIUM_TOKEN_SOURCE.",
     )
     parser.add_argument("--base-url", help="ETAPI base URL, for example http://127.0.0.1:37840/etapi")
     parser.add_argument("--timeout", type=float, default=15.0, help="HTTP timeout in seconds (default: 15)")
@@ -554,7 +578,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("list-children", help="List direct children of a note")
     p.add_argument("parent_id")
 
-    p = sub.add_parser("find-child", help="Find one direct child by exact title")
+    p = sub.add_parser("find-child", help="List direct children matching an exact title (array, empty if none)")
     p.add_argument("parent_id")
     p.add_argument("title")
 
@@ -600,11 +624,6 @@ def run(args: argparse.Namespace) -> Any:
             "Missing token source. Pass --token-source or set TRILIUM_TOKEN_SOURCE. "
             "The value must be a location, not the token itself."
         )
-    if token_source == "stdin":
-        for content_file in [getattr(args, "content_file", None)]:
-            if content_file == "-":
-                raise TokenResolutionError("stdin cannot supply both the token and note content")
-
     token = resolve_token(token_source)
     base_url = resolve_base_url(args.base_url, token, args.timeout)
     client = TriliumClient(base_url, token, args.timeout)
@@ -626,7 +645,7 @@ def run(args: argparse.Namespace) -> Any:
     if args.command == "list-children":
         return client.list_children(args.parent_id)
     if args.command == "find-child":
-        return client.find_child(args.parent_id, args.title)
+        return client.find_children(args.parent_id, args.title)
     if args.command == "search":
         return client.search(args.query, args.limit, args.fast)
     if args.command == "create-note":

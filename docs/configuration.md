@@ -9,7 +9,8 @@
 | `win-cred:<target>` | Windows 凭据管理器 Generic Credential 的精确目标名 | `win-cred:My-Trilium-ETAPI` |
 | `file:<path>` | UTF-8 token 文件路径 | `file:C:\secure\trilium-token.txt` |
 | `env:<name>` | 环境变量名 | `env:TRILIUM_TOKEN` |
-| `stdin` | 从标准输入读取一次 token | 适合受控自动化 |
+
+不支持 `stdin` 通道（2026-11-25 owner 决策）：stdin 注入通常需经 shell 变量、管道或重定向，helper 无法审计 token 的来源路径，暴露面与字面 token 相当，违背最小暴露原则。自动化场景请使用 `env:` 或 `file:`。
 
 也可以通过环境变量指定位置本身：
 
@@ -39,6 +40,10 @@ helper 按以下顺序寻找 ETAPI：
 2. 环境变量 `TRILIUM_ETAPI_URL`
 3. Trilium `healthcheck-url` 文件（仅接受 loopback 地址）
 4. 常见本地端口探测：`37840`、`37740`、`8080`
+
+**建议固定单实例用户显式配置 `TRILIUM_ETAPI_URL` 作为主路径**（owner 决策 2026-11-25）：endpoint 是恒定事实，显式配置一次即消除探测的全部不确定性，端口探测只应作为后备。
+
+**多实例警告**：同时运行多个 Trilium 实例时，`healthcheck-url` 文件只有一个且指向不确定，helper 会静默连上其中一个知识库——写入可能进错库，且写后核验照样通过（核验不区分"是不是你想要的库"）。多实例环境**必须**显式 `--base-url` 指定目标实例，不得依赖自动发现。
 
 如果 healthcheck 文件指向非 loopback 地址，helper 会拒绝自动使用，避免把 token 发到未明确授权的主机；确有远程/反向代理需求时必须显式使用 `--base-url` 或 `TRILIUM_ETAPI_URL`。
 

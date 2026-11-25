@@ -6,19 +6,16 @@
 2. **安全优先**：token 规则是硬约束，不允许为了便利而放宽。
 3. **标准库优先**：`trilium_etapi.py` 当前只使用 Python 标准库；新增依赖必须有明确收益并更新安装/CI 文档。
 4. **幂等可验证**：所有写入路径都应尽量支持重复执行且可核验。
-5. **文档同步**：行为、命令、安装方式变化必须同步 README、docs 和 SKILL.md。
+5. **文档归属**：每条事实只写在其归属文档；归属见 `AGENTS.md` 文档地图，行为变化涉及的归属文档必须同 PR 更新。
 
 ## 开发流程
 
 ```bash
 # 1. 修改代码/文档
-# 2. 运行验证
-python tools/validate_repo.py
-python -m unittest discover -s tests -v
-bash -n install.sh
-python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+# 2. 运行全部本地验证
+python tools/verify.py
 
-# 3. Windows 上再验证 PowerShell 语法和安装行为
+# 3. Windows 上再验证安装行为
 powershell -NoProfile -File install.ps1 -WhatIf
 ```
 

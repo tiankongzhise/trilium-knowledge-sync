@@ -7,6 +7,7 @@ Uses only the Python standard library so it can run in minimal CI images.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
@@ -39,13 +40,17 @@ REQUIRED_PATHS = [
     "docs/security.md",
     "docs/architecture.md",
     "docs/PROJECT_DISCOVERY.md",
+    "docs/PROJECT_STATE.md",
     "docs/PRD.md",
     "docs/TEST_PLAN.md",
     "docs/development.md",
     "docs/troubleshooting.md",
     "tests/test_trilium_etapi.py",
+    "tests/test_validate_repo.py",
+    "tools/verify.py",
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
+    ".github/PULL_REQUEST_TEMPLATE.md",
     "skill/trilium-knowledge-sync/SKILL.md",
     "skill/trilium-knowledge-sync/scripts/trilium_etapi.py",
 ]
@@ -73,6 +78,36 @@ REQUIRED_SKILL_CONCEPTS = [
     "写后核验",
     "禁止",
 ]
+
+# Documentation governance: transitional state phrases ("not done yet" style)
+# may only live in the state register and the append-only changelog. Everywhere
+# else they are guaranteed to rot — this is the authoritative list referenced
+# by AGENTS.md; changing it is a governance change.
+STATE_PHRASES = [
+    "待确认",
+    "待办",
+    "TODO",
+    "FIXME",
+    "未决",
+    "尚无",
+    "仍应",
+    "待实现",
+    "待补充",
+    "尚未配置",
+    "尚未支持",
+    "尚未实现",
+    "尚未完成",
+    "计划支持",
+    "未来会",
+    "将来会",
+]
+
+STATE_PHRASE_WHITELIST = {
+    "docs/PROJECT_STATE.md",
+    "CHANGELOG.md",
+}
+
+DOC_MAP_HEADING = "### 文档地图"
 
 errors: list[str] = []
 
@@ -182,9 +217,11 @@ def validate_helper() -> None:
 
     if 'add_argument("--token"' in source or "add_argument('--token'" in source:
         fail("trilium_etapi.py must not accept a literal --token argument")
+    if 'source == "stdin"' in source or "source == 'stdin'" in source:
+        fail("trilium_etapi.py must not accept stdin as a token source (owner decision 2026-11-25)")
     if "allow_abbrev=False" not in source:
         fail("argparse must disable abbreviations so --token cannot alias --token-source")
-    for source_type in ("win-cred:", "file:", "env:", "stdin"):
+    for source_type in ("win-cred:", "file:", "env:"):
         if source_type not in source:
             fail(f"trilium_etapi.py does not document/support token source type {source_type}")
     if "Authorization" not in source or "Bearer " not in source:
@@ -195,9 +232,7 @@ def validate_helper() -> None:
 
 def validate_markdown_links() -> None:
     link_re = re.compile(r"(?<!!)\[[^\]\n]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
-    for md in sorted(REPO_ROOT.rglob("*.md")):
-        if ".git" in md.parts:
-            continue
+    for md in iter_markdown_files(REPO_ROOT):
         text = read_text(md)
         for match in link_re.finditer(text):
             target = match.group(1).strip("<>")
@@ -235,6 +270,104 @@ def validate_install_scripts() -> None:
         fail("install.sh must support Windows junctions and POSIX symlinks")
 
 
+def iter_repo_files(root: Path) -> list[Path]:
+    """Return files that belong to the repository.
+
+    Inside a git worktree only git-tracked (index/committed) files count as
+    repository content: untracked local files (e.g. machine-local skills or
+    scratch notes) are deliberately invisible to governance. Falls back to a
+    working-tree scan outside git worktrees so tests on plain directories
+    keep working.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=root, capture_output=True, timeout=30,
+        )
+        if proc.returncode == 0:
+            return sorted(
+                root / name
+                for name in proc.stdout.decode("utf-8", "replace").split("\0")
+                if name
+            )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return sorted(
+        p for p in root.rglob("*") if ".git" not in p.parts and p.is_file()
+    )
+
+
+def iter_markdown_files(root: Path) -> list[Path]:
+    return [p for p in iter_repo_files(root) if p.suffix == ".md"]
+
+
+def find_state_phrase_violations(root: Path) -> list[str]:
+    violations: list[str] = []
+    for md in iter_markdown_files(root):
+        relative = md.relative_to(root).as_posix()
+        if relative in STATE_PHRASE_WHITELIST:
+            continue
+        text = read_text(md)
+        for phrase in STATE_PHRASES:
+            if phrase in text:
+                violations.append(f"{relative} contains state phrase {phrase!r}")
+    return violations
+
+
+def parse_doc_map_entries(agents_text: str) -> Optional[list[str]]:
+    lines = agents_text.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == DOC_MAP_HEADING:
+            start = i
+            break
+    if start is None:
+        return None
+    entries: list[str] = []
+    for line in lines[start + 1 :]:
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            break
+        match = re.match(r"^\|\s*`([^`]+)`\s*\|", stripped)
+        if match:
+            entries.append(match.group(1).strip())
+    return entries
+
+
+def find_doc_map_violations(root: Path) -> list[str]:
+    violations: list[str] = []
+    agents_md = root / "AGENTS.md"
+    if not agents_md.exists():
+        return ["AGENTS.md is missing; cannot check document map"]
+    entries = parse_doc_map_entries(read_text(agents_md))
+    if entries is None:
+        return [f"AGENTS.md is missing the document map section ({DOC_MAP_HEADING!r})"]
+    if not entries:
+        return ["AGENTS.md document map has no entries"]
+
+    seen: set[str] = set()
+    for entry in entries:
+        if entry in seen:
+            violations.append(f"document map has duplicate entry: {entry}")
+        seen.add(entry)
+        if not (root / entry).exists():
+            violations.append(f"document map entry does not exist in repository: {entry}")
+
+    listed = set(entries)
+    for md in iter_markdown_files(root):
+        relative = md.relative_to(root).as_posix()
+        if relative not in listed:
+            violations.append(f"{relative} is not registered in the AGENTS.md document map")
+    return violations
+
+
+def validate_doc_governance() -> None:
+    for violation in find_state_phrase_violations(REPO_ROOT):
+        fail(f"state phrase outside whitelist: {violation}")
+    for violation in find_doc_map_violations(REPO_ROOT):
+        fail(f"document map violation: {violation}")
+
+
 def validate_no_common_secret_markers() -> None:
     markers = [
         "-----BEGIN PRIVATE KEY-----",
@@ -261,6 +394,7 @@ def main() -> int:
     validate_helper()
     validate_markdown_links()
     validate_install_scripts()
+    validate_doc_governance()
     validate_no_common_secret_markers()
 
     if errors:

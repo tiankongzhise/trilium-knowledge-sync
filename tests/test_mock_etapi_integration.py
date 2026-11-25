@@ -265,7 +265,9 @@ class MockEtapiIntegrationTests(unittest.TestCase):
             self.assertEqual(json.loads(second.stdout)["action"], "unchanged")
 
             found = self.run_cli("find-child", "root", "Mock 笔记")
-            self.assertEqual(json.loads(found.stdout)["noteId"], note_id)
+            matches = json.loads(found.stdout)
+            self.assertEqual(len(matches), 1)
+            self.assertEqual(matches[0]["noteId"], note_id)
 
             children = self.run_cli("list-children", "root")
             titles = [item["title"] for item in json.loads(children.stdout)]
@@ -291,6 +293,46 @@ class MockEtapiIntegrationTests(unittest.TestCase):
             readback = self.run_cli("get-content", note_id, "--output", str(output))
             self.assertEqual(readback.returncode, 0, readback.stderr)
             self.assertEqual(output.read_text(encoding="utf-8"), "# 标题\n\n第二版\n")
+
+    def test_upsert_refuses_duplicate_titles_and_reports_candidates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            content = Path(tmp) / "note.md"
+            content.write_text("dup content\n", encoding="utf-8")
+            created_ids = []
+            for _ in range(2):
+                result = self.run_cli(
+                    "create-note",
+                    "--parent-id",
+                    "root",
+                    "--title",
+                    "重复笔记dup",
+                    "--type",
+                    "code",
+                    "--mime",
+                    "text/x-markdown",
+                    "--content-file",
+                    str(content),
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                created_ids.append(json.loads(result.stdout)["noteId"])
+
+            upsert = self.run_cli(
+                "upsert-note",
+                "--parent-id",
+                "root",
+                "--title",
+                "重复笔记dup",
+                "--type",
+                "code",
+                "--mime",
+                "text/x-markdown",
+                "--content-file",
+                str(content),
+            )
+            self.assertNotEqual(upsert.returncode, 0)
+            for note_id in created_ids:
+                self.assertIn(note_id, upsert.stderr)
+            self.assertIn("Not choosing one silently", upsert.stderr)
 
     def test_wrong_token_does_not_leak_token(self):
         env_token = "wrong-token"

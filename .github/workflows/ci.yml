@@ -36,27 +36,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Validate repository structure
-        run: python tools/validate_repo.py
+        run: python tools/verify.py validate
 
       - name: Run unit tests
-        run: python -m unittest discover -s tests -v
+        run: python tools/verify.py unittest
 
       - name: Compile helper
-        run: python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+        run: python tools/verify.py compile
 
       - name: Check Bash syntax
-        shell: bash
-        run: bash -n install.sh
+        run: python tools/verify.py bash
 
       - name: Check PowerShell syntax
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $path = (Resolve-Path .\install.ps1).Path
-          $source = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
-          $errors = $null
-          [void][System.Management.Automation.PSParser]::Tokenize($source, [ref]$errors)
-          if ($errors.Count) { $errors; exit 1 }
+        run: python tools/verify.py ps1
 
   install-smoke-bash:
     name: bash install smoke (${{ matrix.os }})
@@ -98,6 +90,51 @@ jobs:
           done
           test -f "skill/$name/SKILL.md"
 
+      - name: Exercise deletion paths of install.sh in an isolated root
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          name='trilium-knowledge-sync'
+          copyroot="$tmp/copyroot"
+          target="$copyroot/$name"
+          mkdir -p "$copyroot"
+
+          # 1. install without force must not touch a real copy
+          cp -r "skill/$name" "$target"
+          echo sentinel > "$target/LOCAL_EDIT"
+          bash ./install.sh -t "$copyroot" >/dev/null
+          test -f "$target/LOCAL_EDIT"
+
+          # 2. install with force replaces the copy with a link
+          bash ./install.sh -t "$copyroot" -f >/dev/null
+          test ! -e "$target/LOCAL_EDIT"
+          test -f "$target/SKILL.md"
+
+          # reset: remove the link, place a fresh copy
+          bash ./install.sh -t "$copyroot" --uninstall >/dev/null
+          test ! -e "$target" && test ! -L "$target"
+          cp -r "skill/$name" "$target"
+          echo sentinel > "$target/LOCAL_EDIT"
+
+          # 3. uninstall without force preserves the copy
+          bash ./install.sh -t "$copyroot" --uninstall >/dev/null 2>&1
+          test -f "$target/LOCAL_EDIT"
+
+          # 4. uninstall with force deletes the copy
+          bash ./install.sh -t "$copyroot" --uninstall -f >/dev/null 2>&1
+          test ! -e "$target" && test ! -L "$target"
+
+          # 5. guard: a directory without SKILL.md is never deleted, even with force
+          mkdir -p "$target"
+          echo sentinel > "$target/LOCAL_EDIT"
+          bash ./install.sh -t "$copyroot" --uninstall -f >/dev/null 2>&1
+          test -f "$target/LOCAL_EDIT"
+
+          # 6. source tree untouched throughout
+          test -f "skill/$name/SKILL.md"
+
   install-smoke-powershell:
     name: PowerShell install smoke
     runs-on: windows-latest
@@ -132,6 +169,45 @@ jobs:
               if (Test-Path $target) { throw "uninstall left target behind: $target" }
             }
             if (-not (Test-Path ".\skill\$name\SKILL.md")) { throw 'source skill missing after smoke test' }
+
+            # deletion-path coverage in an isolated target root
+            $copyroot = Join-Path $tmp 'copyroot'
+            $copytarget = Join-Path $copyroot $name
+            New-Item -ItemType Directory -Path $copyroot -Force | Out-Null
+
+            # 1. install without -Force must not touch a real copy
+            Copy-Item -Recurse ".\skill\$name" $copytarget
+            'sentinel' | Out-File -FilePath (Join-Path $copytarget 'LOCAL_EDIT')
+            .\install.ps1 -TargetRoot $copyroot
+            if (-not (Test-Path (Join-Path $copytarget 'LOCAL_EDIT'))) { throw 'no-force install touched the copy' }
+
+            # 2. install -Force replaces the copy with a link
+            .\install.ps1 -TargetRoot $copyroot -Force
+            if (Test-Path (Join-Path $copytarget 'LOCAL_EDIT')) { throw 'force install did not replace the copy' }
+            if (-not (Test-Path (Join-Path $copytarget 'SKILL.md'))) { throw 'link broken after force install' }
+
+            # reset: remove the link, place a fresh copy
+            .\install.ps1 -TargetRoot $copyroot -Uninstall
+            if (Test-Path $copytarget) { throw 'uninstall did not remove the link' }
+            Copy-Item -Recurse ".\skill\$name" $copytarget
+            'sentinel' | Out-File -FilePath (Join-Path $copytarget 'LOCAL_EDIT')
+
+            # 3. uninstall without -Force preserves the copy
+            .\install.ps1 -TargetRoot $copyroot -Uninstall
+            if (-not (Test-Path (Join-Path $copytarget 'LOCAL_EDIT'))) { throw 'no-force uninstall removed the copy' }
+
+            # 4. uninstall -Force deletes the copy
+            .\install.ps1 -TargetRoot $copyroot -Uninstall -Force
+            if (Test-Path $copytarget) { throw 'force uninstall did not delete the copy' }
+
+            # 5. guard: a directory without SKILL.md is never deleted, even with -Force
+            New-Item -ItemType Directory -Path $copytarget -Force | Out-Null
+            'sentinel' | Out-File -FilePath (Join-Path $copytarget 'LOCAL_EDIT')
+            .\install.ps1 -TargetRoot $copyroot -Uninstall -Force
+            if (-not (Test-Path (Join-Path $copytarget 'LOCAL_EDIT'))) { throw 'guard failed: directory without SKILL.md was deleted' }
+
+            # 6. source tree untouched throughout
+            if (-not (Test-Path ".\skill\$name\SKILL.md")) { throw 'source skill missing after deletion-path tests' }
           } finally {
             $env:USERPROFILE = $oldUserProfile
             $env:APPDATA = $oldAppData

@@ -14,6 +14,28 @@
 - 写错父笔记、覆盖错误笔记、重复创建笔记
 - 绕过 ETAPI 直写 SQLite，破坏 WAL、缓存、同步状态或 revision 记录
 
+## 残余风险：agent 运行时遵守无法验证（使用前必读）
+
+**这是本安全模型最重要、也最容易被误解的边界，请务必理解后再决定是否使用本 skill。**
+
+本仓库的测试、CI 和 `validate_repo.py` 校验能保证的只有：helper 代码按设计工作、`SKILL.md` 中包含规定的约束文案。它们**不能保证**调用 skill 的 AI agent 在运行时真正遵守这些规则。
+
+skill 的本质是写给 agent 的 prompt 指令。宿主 agent 是否遵循取决于模型行为、宿主平台的 prompt 处理方式和上下文状态——仓库内**不存在任何机制可以强制或验证**。具体来说，以下承诺只在 agent 自觉遵循时才成立：
+
+- 只读取你在当前对话中明确指定的 token 位置，不扫描、不猜测、不复用历史位置
+- 不打印、不记录、不把 token 复制进笔记或日志
+- 写入前先向你确认，写后如实报告验证结果
+- 不直写 SQLite、不执行未授权的删除或批量操作
+
+需要明确：**helper 层面的强制（拒绝字面 token、探测形状检查、写后核验）是真实有效的**；但 **agent 行为层面的约束（何时读凭据、读哪个凭据、是否如实报告）只是请求，不是保证**。"测试全绿"不代表 agent 会守规矩。
+
+你可以使用的缓解手段：
+
+- 观察 agent 实际执行的命令行：token source 是否就是你指定的那个，有没有出现意外的凭据访问
+- 重要写入前要求 agent 先给出操作计划（父笔记、标题、type/MIME）再执行
+- 核对写后报告中的 noteId、hash，必要时在 Trilium 中抽查正文
+- 一旦发现 agent 违反上述规则：视为安全事件——吊销该 token、检查笔记内容是否被污染、排查泄露范围
+
 ## 安全控制
 
 ### token 位置强确认
@@ -32,13 +54,19 @@ helper 不提供 `--token` 参数。支持的位置形式只有：
 - `win-cred:<target>`
 - `file:<path>`
 - `env:<name>`
-- `stdin`
 
-这样可避免 token 值出现在命令行和 shell history 中。注意：`stdin` 适合自动化，但调用方仍要保证 token 不进入日志。
+这样可避免 token 值出现在命令行和 shell history 中。`stdin` 不被接受为 token 通道：stdin 注入通常需经 shell 变量、管道或重定向，helper 无法审计 token 的来源路径，暴露面与字面 token 相当（2026-11-25 owner 决策）。自动化场景使用 `env:` 或 `file:`。
 
 ### 自动 endpoint 发现的最小暴露
 
 从 Trilium `healthcheck-url` 文件自动发现的 endpoint 必须是 loopback 地址。常见本地端口探测也会先观察未认证的 `/etapi/app-info` 响应是否具有 Trilium 形状，再发送 token，避免把 token 直接发给恰好占用端口的无关本机服务。远程或反向代理 endpoint 必须由用户/调用方显式指定。
+
+已接受的残余风险（owner 决策 2026-11-25，使用时须知情）：
+
+- 端口探测的形状判断包含 `"Not authenticated"` 子串匹配，恰好返回该文案 401 的本机服务会被误判为 Trilium 并收到 token（仅限 loopback；形状检查防"巧合占用"，防不了本机"故意模仿"——能模仿的攻击者已具备本地执行能力）。
+- `healthcheck-url` 文件路径发现后不做形状验证直接信任（仅受 loopback 硬约束），因为它由 Trilium 自身写入。
+- 多实例 Trilium 下 healthcheck 指向不确定，可能静默连错知识库；多实例环境必须显式 `--base-url`（见 [configuration.md](configuration.md)）。
+- 缓解：固定单实例用户显式配置 `TRILIUM_ETAPI_URL` 作为主路径，端口探测仅作后备。
 
 ### ETAPI 原生写入
 

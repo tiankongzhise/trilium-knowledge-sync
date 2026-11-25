@@ -16,7 +16,7 @@ python trilium_etapi.py --token-source '<位置>' [--base-url '<url>'] <command>
 
 | 参数 | 说明 |
 |---|---|
-| `--token-source` | `win-cred:<target>`、`file:<path>`、`env:<name>` 或 `stdin`；也可用 `TRILIUM_TOKEN_SOURCE` |
+| `--token-source` | `win-cred:<target>`、`file:<path>` 或 `env:<name>`；也可用 `TRILIUM_TOKEN_SOURCE` |
 | `--base-url` | ETAPI base URL；例如 `http://127.0.0.1:37840/etapi` |
 | `--timeout` | HTTP 超时秒数，默认 15 |
 | `--debug` | 显示完整异常栈；仅在受控环境使用 |
@@ -70,7 +70,7 @@ python trilium_etapi.py --token-source '<位置>' list-children '<parentNoteId>'
 python trilium_etapi.py --token-source '<位置>' find-child '<parentNoteId>' '<exact title>'
 ```
 
-精确标题匹配；找不到输出 `null`。
+精确标题匹配，输出**匹配数组**（0.x breaking）：找不到输出 `[]`，找到一个输出单元素数组，存在多个同名未删除笔记时输出全部——helper 绝不静默替你选择其中一个。数组元素为完整 note metadata，可用 `noteId`/`type`/`mime`/`utcDateModified` 等字段区分候选。
 
 ## search
 
@@ -95,7 +95,7 @@ python trilium_etapi.py \
   --expanded
 ```
 
-`--content-file` 省略时创建空内容笔记；`--content-file -` 从 stdin 读内容，但此时 token 不能再使用 `stdin`。
+`--content-file` 省略时创建空内容笔记；`--content-file -` 从 stdin 读内容（stdin 仅用于笔记内容，不能用作 token 通道）。
 
 ## patch-note
 
@@ -134,10 +134,11 @@ python trilium_etapi.py \
 行为：
 
 1. 在指定父笔记下按精确标题查找未删除 child。
-2. 不存在则创建。
-3. 存在则必要时 patch type/MIME。
-4. 正文 hash 不同则替换。
-5. 写入后重新读取父关系或正文核验。
+2. **存在多个同名未删除 child 时拒绝执行**，非零退出，stderr 列出全部候选的 `noteId`、`type`、`mime`、`utcDateModified` 等辨识信息；不静默选择。此时应在 Trilium 中人工处理重复（重命名/移动/删除），或用精确 noteId 通过 `patch-note`/`put-content` 定点操作。
+3. 不存在则创建。
+4. 存在唯一匹配则必要时 patch type/MIME。
+5. 正文 hash 不同则替换。
+6. 写入后重新读取父关系或正文核验。
 
 输出字段：
 
