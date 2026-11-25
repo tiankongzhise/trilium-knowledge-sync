@@ -68,6 +68,16 @@ if ($errors.Count) { $errors; exit 1 }
 - ETAPI 命令参数 → `docs/usage-for-agents.md`、`SKILL.md`、tests
 - 安装目录或链接策略 → `README.md`、`docs/installation.md`、`install.ps1`、`install.sh`
 - CI/发布流程 → `docs/development.md`、`.github/workflows/`
+- 远端仓库配置（branch protection、ruleset、webhook、仓库级 secret/权限等）→ `docs/development.md`、本文件状态表
+
+## 仓库外状态变更防失步
+
+远端配置变更（GitHub branch protection/ruleset/webhook 等）不经过 git 提交，上文的文档同步检查点不会自然触发，属于文档失步盲区。2026-11-25 已发生一次实例：branch protection 通过 API 配置后，`docs/development.md` 的"仍应配置"陈述过期却无人察觉。规则：
+
+1. 执行远端配置变更的同一轮操作中，必须创建 topic branch 同步更新所有描述该状态的文档，与变更一起交付；不得只改远端、不改文档。
+2. 变更前先在仓库内搜索描述目标状态的过渡性词句（"尚未"、"仍应"、"未配置"、"待办"、"TODO" 等），变更完成后逐条核对是否仍然成立。
+3. 文档只写当前事实与持久规则。过渡性陈述必须登记到本文件状态表的「未决事项」，完成时移除；禁止只在正文里留"将来要做"的孤句。
+4. 本条同样约束执行操作的 agent 本人：操作完成后主动报告哪些文档已同步、哪些陈述经核对仍然有效。
 
 ## Git 注意
 
