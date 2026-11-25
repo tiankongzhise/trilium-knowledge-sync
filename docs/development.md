@@ -21,8 +21,10 @@ python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
 PowerShell 语法验证：
 
 ```powershell
+$path = (Resolve-Path .\install.ps1).Path
+$source = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
 $errors = $null
-[void][System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw .\install.ps1), [ref]$errors)
+[void][System.Management.Automation.PSParser]::Tokenize($source, [ref]$errors)
 if ($errors.Count) { $errors; exit 1 }
 ```
 
@@ -63,11 +65,13 @@ trilium-knowledge-sync
 - 删除旧副本必须显式 force
 - 移除链接时不递归进入目标目录
 - 支持多 agent 技能库
+- `install.ps1` 必须保存为 UTF-8 with BOM；否则 Windows PowerShell 5.1 在部分非 UTF-8 ANSI codepage 下可能误读中文注释/字符串
 
 ## CI/CD
 
-- `ci.yml`：Ubuntu + Windows 验证
-- `release.yml`：tag 触发，运行验证并创建 release artifact
+- `ci.yml`：Ubuntu + Windows 验证；Python 3.9 兼容性任务固定在 `ubuntu-22.04`（新版 Ubuntu runner 不再提供该版本），另用 `3.x` 跟踪当前稳定 Python。
+- GitHub Actions 使用 `actions/checkout@v7` 与 `actions/setup-python@v7`（Node 24 runtime）。
+- `release.yml`：tag 触发，运行验证并创建 release artifact。
 
 首次推送远端后，应根据仓库保护策略再决定是否要求 PR、status check 或 tag 审批。
 

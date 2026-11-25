@@ -48,8 +48,10 @@ python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
 Windows 额外验证：
 
 ```powershell
+$path = (Resolve-Path .\install.ps1).Path
+$source = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
 $errors = $null
-[void][System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw .\install.ps1), [ref]$errors)
+[void][System.Management.Automation.PSParser]::Tokenize($source, [ref]$errors)
 if ($errors.Count) { $errors; exit 1 }
 ```
 

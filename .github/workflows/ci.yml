@@ -16,15 +16,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.9', '3.x']
+        include:
+          - os: ubuntu-22.04
+            python-version: '3.9'
+          - os: ubuntu-latest
+            python-version: '3.x'
+          - os: windows-latest
+            python-version: '3.9'
+          - os: windows-latest
+            python-version: '3.x'
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -45,8 +52,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
+          $path = (Resolve-Path .\install.ps1).Path
+          $source = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
           $errors = $null
-          [void][System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw .\install.ps1), [ref]$errors)
+          [void][System.Management.Automation.PSParser]::Tokenize($source, [ref]$errors)
           if ($errors.Count) { $errors; exit 1 }
 
   install-smoke-bash:
@@ -59,7 +68,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Exercise install.sh in an isolated home
         shell: bash
@@ -95,7 +104,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Exercise install.ps1 in an isolated profile
         shell: powershell

@@ -1,4 +1,4 @@
-# trilium-knowledge-sync 安装脚本
+﻿# trilium-knowledge-sync 安装脚本
 # 用法:
 #   .\install.ps1                    # 挂载技能到各 agent 技能库（junction/symlink，免复制）
 #   .\install.ps1 -Force             # 允许替换旧副本或错误挂载

@@ -217,8 +217,11 @@ def validate_markdown_links() -> None:
 
 
 def validate_install_scripts() -> None:
-    ps1 = read_text(REPO_ROOT / "install.ps1") if (REPO_ROOT / "install.ps1").exists() else ""
+    ps1_path = REPO_ROOT / "install.ps1"
+    ps1 = read_text(ps1_path) if ps1_path.exists() else ""
     sh = read_text(REPO_ROOT / "install.sh") if (REPO_ROOT / "install.sh").exists() else ""
+    if ps1_path.exists() and not ps1_path.read_bytes().startswith(b"\xef\xbb\xbf"):
+        fail("install.ps1 must be UTF-8 with BOM so Windows PowerShell 5.1 parses CJK text correctly")
     for content, label in ((ps1, "install.ps1"), (sh, "install.sh")):
         if "trilium-knowledge-sync" not in content:
             fail(f"{label} does not reference the skill name")
