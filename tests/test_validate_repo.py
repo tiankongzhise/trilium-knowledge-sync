@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for the documentation governance checks in tools/validate_repo.py."""
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -131,6 +132,26 @@ class DocMapViolationTests(unittest.TestCase):
             violations = vr.find_doc_map_violations(root)
             self.assertEqual(len(violations), 1)
             self.assertIn("document map section", violations[0])
+
+
+class RepoFileEnumerationTests(unittest.TestCase):
+    def test_untracked_files_are_invisible_inside_git_worktree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            (root / "tracked.md").write_text("x\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked.md"], cwd=root, check=True, capture_output=True)
+            (root / "untracked.md").write_text("x\n", encoding="utf-8")
+            names = [p.name for p in vr.iter_repo_files(root)]
+            self.assertIn("tracked.md", names)
+            self.assertNotIn("untracked.md", names)
+
+    def test_plain_directory_falls_back_to_worktree_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "a.md").write_text("x\n", encoding="utf-8")
+            names = [p.name for p in vr.iter_repo_files(root)]
+            self.assertIn("a.md", names)
 
 
 class RealRepoTests(unittest.TestCase):

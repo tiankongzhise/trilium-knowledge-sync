@@ -7,6 +7,7 @@ Uses only the Python standard library so it can run in minimal CI images.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 import urllib.parse
 from pathlib import Path
@@ -231,9 +232,7 @@ def validate_helper() -> None:
 
 def validate_markdown_links() -> None:
     link_re = re.compile(r"(?<!!)\[[^\]\n]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
-    for md in sorted(REPO_ROOT.rglob("*.md")):
-        if ".git" in md.parts:
-            continue
+    for md in iter_markdown_files(REPO_ROOT):
         text = read_text(md)
         for match in link_re.finditer(text):
             target = match.group(1).strip("<>")
@@ -271,10 +270,35 @@ def validate_install_scripts() -> None:
         fail("install.sh must support Windows junctions and POSIX symlinks")
 
 
-def iter_markdown_files(root: Path) -> list[Path]:
+def iter_repo_files(root: Path) -> list[Path]:
+    """Return files that belong to the repository.
+
+    Inside a git worktree only git-tracked (index/committed) files count as
+    repository content: untracked local files (e.g. machine-local skills or
+    scratch notes) are deliberately invisible to governance. Falls back to a
+    working-tree scan outside git worktrees so tests on plain directories
+    keep working.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=root, capture_output=True, timeout=30,
+        )
+        if proc.returncode == 0:
+            return sorted(
+                root / name
+                for name in proc.stdout.decode("utf-8", "replace").split("\0")
+                if name
+            )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
     return sorted(
-        md for md in root.rglob("*.md") if ".git" not in md.parts
+        p for p in root.rglob("*") if ".git" not in p.parts and p.is_file()
     )
+
+
+def iter_markdown_files(root: Path) -> list[Path]:
+    return [p for p in iter_repo_files(root) if p.suffix == ".md"]
 
 
 def find_state_phrase_violations(root: Path) -> list[str]:

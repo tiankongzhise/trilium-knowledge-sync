@@ -24,6 +24,7 @@
 - `docs/security.md` 新增「残余风险：agent 运行时遵守无法验证」显著披露。
 - CI 安装 smoke test 补齐删除路径覆盖（bash 与 PowerShell 双套）：副本无 force 不动、force 替换为链接、uninstall 无 force 保留副本、有 force 删除副本、无 `SKILL.md` 目录守卫不删（owner 决策 2026-11-25）。
 - `docs/security.md` 记录 endpoint 自动发现的已接受残余风险；`docs/configuration.md` 增加显式 URL 主路径建议与多实例静默错库警告（owner 决策 2026-11-25）。
+- `validate_repo.py` 文档治理枚举改为以 git 追踪文件为准：未追踪的本机文件不再触发地图完整性/禁词扫描（治理管的是入库内容）；git 仓库外回退为工作区扫描。
 
 ### Changed
 
