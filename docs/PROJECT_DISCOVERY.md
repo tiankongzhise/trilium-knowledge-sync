@@ -1,5 +1,7 @@
 # Project Discovery
 
+本文档是**永恒设计文档**：记录项目定位、证据来源与持久技术判断，回答"为什么这样设计"。它不记录随时间变化的状态；项目当前阶段、开放事项与远端配置事实一律以 [PROJECT_STATE.md](PROJECT_STATE.md) 为准。
+
 ## 项目定位
 
 `trilium-knowledge-sync` 是一个面向本地 AI coding agents 的 Trilium Notes 同步技能仓库。它不是 Trilium 插件、不是独立后端服务，也不是通用笔记迁移平台。
@@ -18,7 +20,7 @@
 - Trilium ETAPI OpenAPI 定义：`create-note`、note PATCH/content/search/import/export 等接口。
 - 现有 `ai-signature-guard` 项目的单仓库 + junction/symlink 安装模式。
 
-## 事实 / 推断 / 建议 / 待确认
+## 事实 / 推断 / 建议
 
 | 类型 | 结论 | 置信度 | 证据/影响 |
 |---|---|---|---|
@@ -29,8 +31,6 @@
 | 事实 | 本项目自身不需要数据库 | 高 | 只是 CLI/helper + 文档 + skill |
 | 推断 | Markdown 原文最适合 `code + text/x-markdown` | 中 | 可保留源格式，Trilium 对 Markdown code note 有预览能力 |
 | 建议 | 索引页使用 `text + text/html` 和内部 reference link | 中 | 已验证的 Trilium 笔记结构 |
-| 待确认 | 是否需要 attachment ZIP import 的高级批量导入 | 中 | 当前 upsert 已覆盖多数文本场景 |
-| 待确认 | 仓库远端 owner/组织与发布策略 | 高 | 尚无远端仓库 |
 
 ## 技术判断
 
@@ -63,34 +63,9 @@
 - 不直接写 SQLite
 - 安装脚本默认不删除真实目录副本
 
-## 当前范围
-
-已覆盖：
-
-- skill 行为约束
-- ETAPI helper/CLI
-- 单元测试 + mock ETAPI 集成测试
-- Windows/Bash 链接安装脚本
-- 项目文档与故障排查
-- GitHub Actions CI/release 模板
-
-未覆盖/暂缓：
-
-- attachment 上传高级封装
-- ZIP import/export 自动化
-- 多笔记批量事务性回滚
-- 远端仓库真实发布
-- 受保护笔记操作（明确不支持绕过）
-
 ## 主要风险
 
 1. 用户 token 被误读或误用：通过位置确认和最小暴露降低。
 2. 写错父笔记/同名笔记：通过精确父 ID + 精确标题、写后核验降低。
 3. Windows junction/symlink 行为差异：通过双平台 CI smoke test 降低。
 4. Trilium 版本 API 差异：通过标准 ETAPI 和故障排查文档降低。
-
-## 未决问题
-
-1. 仓库远端归属、默认分支保护和发布审批方式。
-2. 是否公开分发；若公开，需再次审阅文档中的本机路径示例。
-3. 是否引入附件/导入 ZIP 的高级功能。

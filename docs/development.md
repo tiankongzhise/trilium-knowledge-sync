@@ -12,21 +12,10 @@
 ## 常用验证
 
 ```bash
-python tools/validate_repo.py
-python -m unittest discover -s tests -v
-bash -n install.sh
-python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+python tools/verify.py
 ```
 
-PowerShell 语法验证：
-
-```powershell
-$path = (Resolve-Path .\install.ps1).Path
-$source = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
-$errors = $null
-[void][System.Management.Automation.PSParser]::Tokenize($source, [ref]$errors)
-if ($errors.Count) { $errors; exit 1 }
-```
+`verify.py` 一次运行全部本地检查；传入选项名可只跑子集（`validate`、`unittest`、`compile`、`bash`、`ps1`），例如 `python tools/verify.py validate`。PowerShell 语法检查在无 PowerShell 的平台上自动跳过。
 
 安装脚本 smoke test 应使用临时 HOME/APPDATA，避免污染真实 agent 技能库。
 
@@ -49,9 +38,10 @@ trilium-knowledge-sync
 ## 修改 trilium_etapi.py 的注意点
 
 1. 保持只接受 token 位置，不新增字面 token 参数。
-2. 新增命令要同步更新：
-   - `SKILL.md`
+2. 新增命令要同步更新（归属见 `AGENTS.md` 文档地图）：
+   - `docs/cli-reference.md`（CLI 接口的权威归属）
    - `docs/usage-for-agents.md`
+   - `SKILL.md`
    - `tests/test_trilium_etapi.py`
    - README（如用户可见行为变化）
 3. 错误信息不能包含 Authorization header 或 token。
@@ -73,7 +63,7 @@ trilium-knowledge-sync
 - GitHub Actions 使用 `actions/checkout@v7` 与 `actions/setup-python@v7`（Node 24 runtime）。
 - `release.yml`：tag 触发，运行验证并创建 release artifact。
 
-仓库规则要求所有变更通过 topic branch + PR 进入 `main`，且 CI 全部成功后才能合并；禁止本地直接提交或 push `main`。远端 `main` 已配置 branch protection（2026-11-25 生效）：强制 PR、要求 ci.yml 全部 7 个任务 success、strict up-to-date、对 admin 同样生效、禁止 force push 与删除分支。修改保护配置或 CI 任务命名时，必须同步更新本节与保护配置中的 required contexts。
+仓库规则要求所有变更通过 topic branch + PR 进入 `main`，且 CI 全部成功后才能合并；禁止本地直接提交或 push `main`。branch protection 的当前配置事实（required checks、生效日期等）属于时效性状态，以 [PROJECT_STATE.md](PROJECT_STATE.md) 为准。修改 CI 任务命名或增删任务时，必须同步更新远端保护配置中的 required contexts，并在同一轮操作中更新登记处。
 
 ## 发布建议
 
@@ -82,4 +72,4 @@ trilium-knowledge-sync
 3. 创建 tag，例如 `v0.1.0`
 4. push tag 后检查 release workflow
 
-不要在没有明确远端仓库和 owner 授权前发布。
+发布策略与远端仓库现状以 [PROJECT_STATE.md](PROJECT_STATE.md) 为准；登记处显示策略未确定时，需仓库 owner 明确指示后再发布。

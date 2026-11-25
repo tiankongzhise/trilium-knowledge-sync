@@ -14,3 +14,14 @@
 - 新增单元测试、mock ETAPI 端到端测试、仓库校验脚本和 GitHub Actions CI/CD 模板。
 - 端口自动探测在识别 Trilium ETAPI 响应形状前不发送 token；healthcheck 自动发现仅接受 loopback 地址。
 - `upsert-note` 与 `put-content` 写入后重新读取正文/父关系进行核验。
+- 文档治理框架：`AGENTS.md` 文档地图确立每份文档的唯一职责与事实归属；`docs/PROJECT_STATE.md` 成为全部时效性状态的唯一登记处。
+- `tools/validate_repo.py` 新增机器强制检查：过渡性状态词句禁扫（白名单外出现即失败）、文档地图完整性（未登记/缺失/重复即失败）。
+- `tests/test_validate_repo.py` 覆盖文档治理校验逻辑。
+- `tools/verify.py` 统一本地验证入口，替代散落在五份文档中的逐字命令清单；CI 各步骤改经同一入口执行。
+- `.github/PULL_REQUEST_TEMPLATE.md` 增加文档治理核对清单。
+
+### Changed
+
+- `docs/PROJECT_DISCOVERY.md` 剥离全部时效性状态，转为只记录定位、证据与技术判断的永恒设计文档。
+- `docs/development.md` 中 branch protection 配置事实迁移至状态登记处，该文档只保留持久规则。
+- `AGENTS.md` 移除状态表，"文档同步要求"与"仓库外状态变更防失步"整合升级为文档治理一节。

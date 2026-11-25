@@ -14,19 +14,10 @@
 ## 本地命令
 
 ```bash
-python tools/validate_repo.py
-python -m unittest discover -s tests -v
-bash -n install.sh
-python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+python tools/verify.py
 ```
 
-Windows PowerShell：
-
-```powershell
-$errors = $null
-[void][System.Management.Automation.PSParser]::Tokenize((Get-Content -Raw .\install.ps1), [ref]$errors)
-if ($errors.Count) { $errors; exit 1 }
-```
+`verify.py` 统一运行全部本地检查（仓库结构与文档治理校验、单元测试、helper 编译、Bash/PowerShell 语法），命令细节以脚本为唯一权威；传入选项名可只跑子集，见 `python tools/verify.py` 的用法说明。
 
 ## 单元测试重点
 
@@ -100,7 +91,7 @@ if ($errors.Count) { $errors; exit 1 }
 ## 发布前冒烟
 
 - CI 全绿。
-- `quick_validate.py` 或等价 skill validator 通过。
+- `tools/validate_repo.py`（仓库结构与 SKILL 校验）通过。
 - CHANGELOG 已更新。
 - tag 版本与 release artifact 命名正确。
 - 压缩包不包含 token、临时文件、`__pycache__` 或本机隐私路径。

@@ -20,17 +20,7 @@
 
 本仓库是 `trilium-knowledge-sync` skill 的唯一开发源头。其他 agent 必须通过 junction/symlink 链接使用 `skill/trilium-knowledge-sync/`，不得复制 skill 到各个 agent 目录形成多份副本。
 
-## 当前阶段状态
-
-| 字段 | 当前值 |
-|---|---|
-| 当前阶段 | 初始工程基线，进行中；用户已授权创建仓库与配套工程化文件，尚未做最终人工终审 |
-| 允许修改 | 本仓库内文件；不得修改用户真实 agent 技能库，除非用户明确要求安装/卸载 |
-| 审核产物 | `skill/trilium-knowledge-sync/`、`docs/`、`tests/`、`.github/workflows/`、安装脚本 |
-| 未决事项 | 远端仓库归属、发布策略、真实 Trilium token 的手动验收 |
-| 下一阶段 | 用户复核初始基线；之后进入增量维护 |
-
-本项目无产品 UI，低保真/高保真/Demo 审核门不适用；替代验收为单元测试、mock ETAPI 集成测试、安装 smoke test 和受控真实 Trilium 验证。详细事实见 `docs/PROJECT_DISCOVERY.md`，需求见 `docs/PRD.md`，测试策略见 `docs/TEST_PLAN.md`。
+本项目无产品 UI，低保真/高保真/Demo 审核门不适用；替代验收为单元测试、mock ETAPI 集成测试、安装 smoke test 和受控真实 Trilium 验证。
 
 ## 核心不变量
 
@@ -40,44 +30,77 @@
 - 不接受、不打印、不记录、不提交字面 token。
 - 默认禁止直写 Trilium SQLite / `document.db`；运行路径必须走 ETAPI。
 - 安装脚本只能创建/移除链接；删除旧副本必须显式 `-Force` / `-f`。
+- 工作范围限于本仓库内文件；不得修改用户真实 agent 技能库，除非用户明确要求安装/卸载。
 
-## 本地验证命令
+## 工作状态
+
+项目的当前阶段、开放事项、远端配置事实等全部时效性状态，唯一归属 [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md)。**开始工作前先读它**；本文件不登记任何状态。
+
+## 文档治理
+
+### 文档地图
+
+每份文档有且只有一个职责。下表是全部文档的归属登记；仓内每个 `.md` 必须在本表登记，新增文档必须先登记本表再提交（CI 强制）。
+
+| 文档 | 类型 | 唯一职责 | 拥有的事实域 | 禁写内容 |
+|---|---|---|---|---|
+| `AGENTS.md` | 治理 | agent 工作规则、文档地图、治理硬规则 | 治理规则、持久工作约束 | 时效状态、操作步骤细节 |
+| `docs/PROJECT_STATE.md` | 状态 | 时效性状态唯一登记处 | 当前阶段、开放事项、远端仓库与配置事实 | 持久规则、设计判断 |
+| `README.md` | 门面 | 项目定位、快速入口、文档导航 | 项目定位表述、导航结构 | 状态、逐字命令清单 |
+| `docs/PRD.md` | 规范 | 需求、优先级、验收标准、永久性非目标 | 需求与范围 | 实现进度、临时状态 |
+| `docs/PROJECT_DISCOVERY.md` | 规范 | 设计依据：定位证据、技术判断、风险 | 证据来源、技术判断、风险分析 | 一切时效状态 |
+| `docs/architecture.md` | 规范 | 系统结构与设计决策及理由 | 架构、note type 策略、幂等模型 | 状态、操作步骤 |
+| `docs/TEST_PLAN.md` | 规范 | 测什么、为什么这样测 | 测试层级、覆盖重点 | 逐字命令清单 |
+| `docs/development.md` | 规范 | 开发技术参考与 CI/CD 内部细节 | CI 结构、脚本技术约束、修改注意点 | 远端配置事实 |
+| `docs/getting-started.md` | 操作 | 新用户从零到首次同步 | 用户上手路径 | 状态 |
+| `docs/installation.md` | 操作 | 安装/卸载/链接模型细节 | 安装行为与参数 | 状态 |
+| `docs/configuration.md` | 操作 | token 位置格式与 endpoint 解析 | token source 格式、环境变量 | 状态 |
+| `docs/usage-for-agents.md` | 操作 | agent 调用模式与推荐流程 | 使用模式 | 状态 |
+| `docs/cli-reference.md` | 操作 | CLI 参数权威参考 | 命令行接口 | 状态 |
+| `docs/security.md` | 规范 | 威胁模型与安全控制设计 | 威胁模型、泄漏响应 | 状态 |
+| `docs/troubleshooting.md` | 操作 | 症状→诊断→解决 | 故障模式 | 状态 |
+| `CONTRIBUTING.md` | 规范 | 面向人类贡献者的流程表述 | 贡献流程 | 与本文硬规则重复的细节（引用代替） |
+| `CHANGELOG.md` | 台账 | 版本变更记录（append-only） | 版本历史 | 当前状态 |
+| `SECURITY.md` | 惯例 | 安全问题报告政策 | 漏洞报告流程 | — |
+| `SUPPORT.md` | 惯例 | 支持渠道与范围 | 支持范围 | — |
+| `CODE_OF_CONDUCT.md` | 惯例 | 行为准则 | 社区准则 | — |
+| `skill/trilium-knowledge-sync/SKILL.md` | 运行时 | agent 行为约束（产品组成部分，不是项目文档） | skill 行为规则 | 项目状态 |
+| `.github/PULL_REQUEST_TEMPLATE.md` | 模板 | PR 核对清单 | 核对项 | — |
+| `.github/ISSUE_TEMPLATE/bug_report.md` | 模板 | bug 报告 issue 表单 | bug 报告结构 | — |
+| `.github/ISSUE_TEMPLATE/feature_request.md` | 模板 | 功能建议 issue 表单 | 功能建议结构 | — |
+
+### 事实归属规则
+
+1. **一条事实只许写在它的归属文档**。其他文档需要时给链接，不复述。归属冲突时以本表「拥有的事实域」为准。
+2. 写新事实前先查本表确认归属；无归属的事实不准写——先在本表登记归属，再写事实。
+3. 发现同一事实的第二处抄录：删除抄录改为引用；如认为归应当转移，先改本表再迁移。
+4. 时效性状态（项目阶段、开放事项、远端配置事实、"还没做"类陈述）唯一归属 `docs/PROJECT_STATE.md`。"永不做"属于设计决策，可写在 PRD/安全模型等规范文档；"还没做"属于状态，只许进登记处。
+5. 可由代码、测试、git 推导的事实不写入任何文档（例如"哪些功能已实现"）。
+
+### 机器强制（CI 每次执行，不依赖自觉）
+
+`tools/validate_repo.py` 包含以下文档治理检查，失败即 CI 红：
+
+- **状态词句禁扫**：过渡性状态词句（权威清单见 `validate_repo.py` 中 `STATE_PHRASES` 常量）只许出现在 `docs/PROJECT_STATE.md` 与 `CHANGELOG.md`，出现在其他任何 `.md` 即失败。
+- **文档地图完整性**：仓内每个 `.md` 必须在上表登记；表中每个条目对应的文件必须存在；表内不得有重复条目。
+
+修改 `STATE_PHRASES` 清单或白名单属于治理变更，需在 PR 中说明理由。
+
+### 仓库外状态变更
+
+远端配置变更（GitHub branch protection/ruleset/webhook/仓库可见性等）不经过 git 提交，属于失步盲区。规则：
+
+1. 执行远端配置变更的同一轮操作中，必须创建 topic branch 同步更新 `docs/PROJECT_STATE.md`，与变更一起交付；不得只改远端、不改登记。
+2. 变更前在仓内检索描述目标状态的既有陈述，变更后逐条核对是否仍然成立；失效陈述在同一分支内清除或改写。
+3. 本条约束执行操作的 agent 本人：操作完成后主动报告哪些文档已同步、哪些陈述经核对仍然有效。
+
+## 本地验证
 
 ```bash
-python tools/validate_repo.py
-python -m unittest discover -s tests -v
-bash -n install.sh
-python -m py_compile skill/trilium-knowledge-sync/scripts/trilium_etapi.py
+python tools/verify.py
 ```
 
-Windows 额外验证：
-
-```powershell
-$path = (Resolve-Path .\install.ps1).Path
-$source = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
-$errors = $null
-[void][System.Management.Automation.PSParser]::Tokenize($source, [ref]$errors)
-if ($errors.Count) { $errors; exit 1 }
-```
-
-## 文档同步要求
-
-修改以下任一内容时，必须检查并同步相关文档：
-
-- token source 格式 → `docs/configuration.md`、`docs/getting-started.md`、`SKILL.md`
-- ETAPI 命令参数 → `docs/usage-for-agents.md`、`SKILL.md`、tests
-- 安装目录或链接策略 → `README.md`、`docs/installation.md`、`install.ps1`、`install.sh`
-- CI/发布流程 → `docs/development.md`、`.github/workflows/`
-- 远端仓库配置（branch protection、ruleset、webhook、仓库级 secret/权限等）→ `docs/development.md`、本文件状态表
-
-## 仓库外状态变更防失步
-
-远端配置变更（GitHub branch protection/ruleset/webhook 等）不经过 git 提交，上文的文档同步检查点不会自然触发，属于文档失步盲区。2026-11-25 已发生一次实例：branch protection 通过 API 配置后，`docs/development.md` 的"仍应配置"陈述过期却无人察觉。规则：
-
-1. 执行远端配置变更的同一轮操作中，必须创建 topic branch 同步更新所有描述该状态的文档，与变更一起交付；不得只改远端、不改文档。
-2. 变更前先在仓库内搜索描述目标状态的过渡性词句（"尚未"、"仍应"、"未配置"、"待办"、"TODO" 等），变更完成后逐条核对是否仍然成立。
-3. 文档只写当前事实与持久规则。过渡性陈述必须登记到本文件状态表的「未决事项」，完成时移除；禁止只在正文里留"将来要做"的孤句。
-4. 本条同样约束执行操作的 agent 本人：操作完成后主动报告哪些文档已同步、哪些陈述经核对仍然有效。
+`verify.py` 一次运行全部本地检查（validate_repo、单元测试、helper 编译、bash 语法、PowerShell 语法按平台可用性自动跳过）。可传入子集，例如 `python tools/verify.py validate unittest`。CI 使用同一入口。
 
 ## Git 注意
 
