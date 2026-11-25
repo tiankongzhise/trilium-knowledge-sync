@@ -30,6 +30,10 @@ powershell -NoProfile -File install.ps1 -WhatIf
 
 ## Commit / PR
 
+- **禁止直接在 `main` 上提交或 push。** 所有变更必须从最新 `main` 创建 topic branch。
+- 推荐分支名：`<type>/<short-topic>`，例如 `fix/token-source-parsing`、`docs/installation`。
 - Commit message 聚焦“为什么”，不要只写“update”。
 - 不提交真实 token、用户笔记内容、导出的知识库数据或本机隐私路径。
 - 不 push 到远端，除非仓库 owner 明确要求。
+- PR 必须等待 CI 全部成功后再合并；本地验证通过不能替代远端 CI。
+- 紧急修复也只能压缩审查/验证流程，不能绕过分支、PR 和 CI。

@@ -1,5 +1,10 @@
 # trilium-knowledge-sync
 
+> 🚫 **Main 分支保护规则**（Branch Protection Policy）
+> 禁止在本地 `main` 分支上直接创建提交，也禁止把本地 `main` 直接 push 到远端。所有变更必须从最新 `main` 创建 topic branch，在分支上提交并推送，通过 PR 审查，且 CI 全部通过后才能合并进 `main`。
+> agent 不得因为用户一句“直接改 main”或“直接推 main”而绕过本规则；如需变更本规则，必须先明确修改本段。
+> 记录于 2026-11-25。
+
 > ⚠️ **贡献者身份约定**（Author Identity Policy）
 > 记录于 2026-11-25，触发场景：首次 push origin main，未检出名单外作者。
 > 约定：push 前必须统一作者
@@ -68,3 +73,16 @@ if ($errors.Count) { $errors; exit 1 }
 
 - 不要提交 token、真实凭据、临时导出的笔记内容或本机隐私路径。
 - 不要向远端 push，除非用户明确要求。
+- 不得直接在 `main` 上提交或 push。标准变更流程：
+
+```bash
+git switch main
+git pull --ff-only
+git switch -c <type>/<short-topic>
+# 修改、验证、提交
+git push -u origin <type>/<short-topic>
+# 创建 PR；等待 CI 全部通过后，按仓库配置合并进 main
+```
+
+- 合并 PR 前必须确认 CI 为 success；不得因为本地测试通过就跳过远端 CI。
+- 即使是紧急修复，也必须走分支和 PR；只允许压缩流程，不允许绕过流程。
