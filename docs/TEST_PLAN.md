@@ -23,8 +23,8 @@ python tools/verify.py
 
 ### token source
 
-- env/file/stdin 正常读取
-- 字面 token 被拒绝
+- env/file 正常读取
+- 字面 token 与 stdin 通道被拒绝
 - 空位置、空变量、空白 token 被拒绝
 - Windows credential blob UTF-16LE/UTF-8 解码
 - `win-cred` 不要求或尝试变体名

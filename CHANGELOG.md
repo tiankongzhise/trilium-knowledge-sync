@@ -20,9 +20,13 @@
 - `tools/verify.py` 统一本地验证入口，替代散落在五份文档中的逐字命令清单；CI 各步骤改经同一入口执行。
 - `.github/PULL_REQUEST_TEMPLATE.md` 增加文档治理核对清单。
 - 发布策略确立为发版 PR 制：版本号以 helper 的 `VERSION` 常量为真相源，tag 与 CHANGELOG 必须一致；见 `docs/development.md`「发布流程」。
+- `upsert-note` 遇到同一父笔记下多个同名未删除笔记时拒绝执行，stderr 列出全部候选的 noteId 与辨识信息，不再静默选择第一个（owner 决策 2026-11-25）。
+- `docs/security.md` 新增「残余风险：agent 运行时遵守无法验证」显著披露。
 
 ### Changed
 
+- **breaking**：`stdin` 不再是合法 token source（owner 决策 2026-11-25：stdin 注入暴露面与字面 token 相当）；自动化场景改用 `env:` 或 `file:`。
+- **breaking**：`find-child` 输出从单个对象/`null` 改为匹配数组（无匹配输出 `[]`），不做静默选择。
 - `docs/PROJECT_DISCOVERY.md` 剥离全部时效性状态，转为只记录定位、证据与技术判断的永恒设计文档。
 - `docs/development.md` 中 branch protection 配置事实迁移至状态登记处，该文档只保留持久规则。
 - `AGENTS.md` 移除状态表，"文档同步要求"与"仓库外状态变更防失步"整合升级为文档治理一节。

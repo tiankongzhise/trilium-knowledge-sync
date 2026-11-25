@@ -95,7 +95,8 @@ scripts/trilium_etapi.py
 | Windows 凭据管理器目标名 `NAME` | `win-cred:NAME` |
 | 文件 `C:\path\token.txt` | `file:C:\path\token.txt` |
 | 环境变量 `TRILIUM_TOKEN` | `env:TRILIUM_TOKEN` |
-| 通过 stdin 注入 | `stdin` |
+
+`stdin` 不是合法 token source；用户提出经管道/重定向注入 token 时，拒绝并引导改用 `env:` 或 `file:`。
 
 注意：Windows 目标名必须精确，包含大小写和末尾空格。不要自动尝试变体。
 
@@ -149,6 +150,8 @@ python "<SKILL_BASE_DIR>/scripts/trilium_etapi.py" --token-source '<source>' fin
 ### 6. 幂等写入
 
 优先使用 `upsert-note`：按“指定父笔记下的精确标题”查找，存在则更新，缺否则创建。
+
+如果同一父笔记下存在多个同名未删除笔记，`upsert-note` 会拒绝执行并在 stderr 列出全部候选的辨识信息（noteId、type、mime、修改时间等）。此时**禁止自行挑选其中一个**，必须把候选列表完整呈给用户，说明每个 noteId 对应哪篇笔记，由用户决定如何处理：在 Trilium 中人工重命名/移动/删除重复项后重试，或明确指定某个 noteId 用 `patch-note`/`put-content` 定点操作。`find-child` 输出数组，同样不做静默选择。
 
 ```bash
 python "<SKILL_BASE_DIR>/scripts/trilium_etapi.py" \

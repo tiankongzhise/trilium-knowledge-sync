@@ -130,9 +130,9 @@ class TokenResolutionTests(unittest.TestCase):
             path.write_text("abc123\n", encoding="utf-8")
             self.assertEqual(te.resolve_token(f"file:{path}"), "abc123")
 
-    def test_stdin_token(self):
-        with mock.patch.object(sys, "stdin", io.StringIO("abc123\n")):
-            self.assertEqual(te.resolve_token("stdin"), "abc123")
+    def test_stdin_token_source_rejected(self):
+        with self.assertRaises(te.TokenResolutionError):
+            te.resolve_token("stdin")
 
     def test_literal_token_rejected(self):
         for source in ["", "abc123", "etapi_abc123", "--token"]:
@@ -220,7 +220,7 @@ class ClientTests(unittest.TestCase):
         self.assertIn("<redacted>", str(ctx.exception))
         self.assertNotIn("secret", str(ctx.exception))
 
-    def test_find_child_exact_title_and_skips_deleted(self):
+    def test_find_children_exact_title_and_skips_deleted(self):
         client = te.TriliumClient("http://x/etapi", "token")
 
         def get_note(note_id):
@@ -233,8 +233,38 @@ class ClientTests(unittest.TestCase):
             return values[note_id]
 
         with mock.patch.object(client, "get_note", side_effect=get_note):
-            self.assertEqual(client.find_child("parent", "report")["noteId"], "b")
-            self.assertIsNone(client.find_child("parent", "missing"))
+            matches = client.find_children("parent", "report")
+            self.assertEqual([m["noteId"] for m in matches], ["b"])
+            self.assertEqual(client.find_children("parent", "missing"), [])
+
+    def test_find_children_returns_all_duplicates(self):
+        client = te.TriliumClient("http://x/etapi", "token")
+
+        def get_note(note_id):
+            values = {
+                "parent": {"childNoteIds": ["a", "b", "c"]},
+                "a": {"noteId": "a", "title": "report"},
+                "b": {"noteId": "b", "title": "report"},
+                "c": {"noteId": "c", "title": "other"},
+            }
+            return values[note_id]
+
+        with mock.patch.object(client, "get_note", side_effect=get_note):
+            matches = client.find_children("parent", "report")
+            self.assertEqual([m["noteId"] for m in matches], ["a", "b"])
+
+    def test_describe_note_includes_identifying_fields(self):
+        note = {
+            "noteId": "abc",
+            "type": "code",
+            "mime": "text/x-markdown",
+            "utcDateModified": "2026-01-01T00:00:00.000Z",
+            "childNoteIds": ["x", "y"],
+        }
+        description = te.TriliumClient.describe_note(note)
+        self.assertIn("noteId=abc", description)
+        self.assertIn("utcDateModified=2026-01-01T00:00:00.000Z", description)
+        self.assertIn("children=2", description)
 
     def test_list_children_skips_deleted(self):
         client = te.TriliumClient("http://x/etapi", "token")
@@ -261,7 +291,7 @@ class UpsertTests(unittest.TestCase):
                 return {"childNoteIds": ["new1"]}
             return {"noteId": "new1", "type": "code", "mime": "text/x-markdown"}
 
-        with mock.patch.object(client, "find_child", return_value=None), mock.patch.object(
+        with mock.patch.object(client, "find_children", return_value=[]), mock.patch.object(
             client, "create_note", return_value={"noteId": "new1"}
         ) as create, mock.patch.object(
             client, "get_note", side_effect=get_note
@@ -273,7 +303,7 @@ class UpsertTests(unittest.TestCase):
     def test_upsert_unchanged_when_hash_matches(self):
         client = te.TriliumClient("http://x/etapi", "token")
         existing = {"noteId": "n1", "type": "code", "mime": "text/x-markdown"}
-        with mock.patch.object(client, "find_child", return_value=existing), mock.patch.object(
+        with mock.patch.object(client, "find_children", return_value=[existing]), mock.patch.object(
             client, "get_content", return_value="hello\r\n"
         ), mock.patch.object(client, "put_content") as put:
             result = client.upsert_note("p1", "title", "code", "text/x-markdown", "hello\n")
@@ -283,7 +313,7 @@ class UpsertTests(unittest.TestCase):
     def test_upsert_updates_changed_content(self):
         client = te.TriliumClient("http://x/etapi", "token")
         existing = {"noteId": "n1", "type": "code", "mime": "text/x-markdown"}
-        with mock.patch.object(client, "find_child", return_value=existing), mock.patch.object(
+        with mock.patch.object(client, "find_children", return_value=[existing]), mock.patch.object(
             client, "get_content", side_effect=["old", "new"]
         ), mock.patch.object(client, "put_content") as put:
             result = client.upsert_note("p1", "title", "code", "text/x-markdown", "new")
@@ -311,7 +341,7 @@ class UpsertTests(unittest.TestCase):
     def test_upsert_patches_type_and_mime_before_content_check(self):
         client = te.TriliumClient("http://x/etapi", "token")
         existing = {"noteId": "n1", "type": "text", "mime": "text/html"}
-        with mock.patch.object(client, "find_child", return_value=existing), mock.patch.object(
+        with mock.patch.object(client, "find_children", return_value=[existing]), mock.patch.object(
             client, "patch_note"
         ) as patch, mock.patch.object(
             client, "get_note", return_value={"noteId": "n1", "type": "code", "mime": "text/x-markdown"}
@@ -323,6 +353,25 @@ class UpsertTests(unittest.TestCase):
         put.assert_not_called()
         self.assertEqual(result["action"], "updated")
 
+    def test_upsert_refuses_duplicate_titles_and_lists_candidates(self):
+        client = te.TriliumClient("http://x/etapi", "token")
+        duplicates = [
+            {"noteId": "n1", "type": "code", "mime": "text/x-markdown", "utcDateModified": "2026-01-01T00:00:00Z"},
+            {"noteId": "n2", "type": "text", "mime": "text/html", "utcDateModified": "2026-02-02T00:00:00Z"},
+        ]
+        with mock.patch.object(client, "find_children", return_value=duplicates), mock.patch.object(
+            client, "create_note"
+        ) as create, mock.patch.object(client, "put_content") as put:
+            with self.assertRaises(te.TriliumSyncError) as ctx:
+                client.upsert_note("p1", "title", "code", "text/x-markdown", "hello")
+        message = str(ctx.exception)
+        self.assertIn("noteId=n1", message)
+        self.assertIn("noteId=n2", message)
+        self.assertIn("Not choosing one silently", message)
+        self.assertIn("patch-note/put-content", message)
+        create.assert_not_called()
+        put.assert_not_called()
+
 
 class CliTests(unittest.TestCase):
     def test_no_literal_token_argument(self):
@@ -333,7 +382,7 @@ class CliTests(unittest.TestCase):
                 parser.parse_args(["--token=abc", "app-info"])
         self.assertIn("unrecognized arguments", stderr.getvalue())
 
-    def test_stdin_cannot_supply_token_and_content(self):
+    def test_stdin_token_source_rejected_at_cli_level(self):
         args = te.build_parser().parse_args(
             [
                 "--token-source",

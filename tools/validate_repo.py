@@ -216,9 +216,11 @@ def validate_helper() -> None:
 
     if 'add_argument("--token"' in source or "add_argument('--token'" in source:
         fail("trilium_etapi.py must not accept a literal --token argument")
+    if 'source == "stdin"' in source or "source == 'stdin'" in source:
+        fail("trilium_etapi.py must not accept stdin as a token source (owner decision 2026-11-25)")
     if "allow_abbrev=False" not in source:
         fail("argparse must disable abbreviations so --token cannot alias --token-source")
-    for source_type in ("win-cred:", "file:", "env:", "stdin"):
+    for source_type in ("win-cred:", "file:", "env:"):
         if source_type not in source:
             fail(f"trilium_etapi.py does not document/support token source type {source_type}")
     if "Authorization" not in source or "Bearer " not in source:

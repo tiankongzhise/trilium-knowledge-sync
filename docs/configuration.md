@@ -9,7 +9,8 @@
 | `win-cred:<target>` | Windows 凭据管理器 Generic Credential 的精确目标名 | `win-cred:My-Trilium-ETAPI` |
 | `file:<path>` | UTF-8 token 文件路径 | `file:C:\secure\trilium-token.txt` |
 | `env:<name>` | 环境变量名 | `env:TRILIUM_TOKEN` |
-| `stdin` | 从标准输入读取一次 token | 适合受控自动化 |
+
+不支持 `stdin` 通道（2026-11-25 owner 决策）：stdin 注入通常需经 shell 变量、管道或重定向，helper 无法审计 token 的来源路径，暴露面与字面 token 相当，违背最小暴露原则。自动化场景请使用 `env:` 或 `file:`。
 
 也可以通过环境变量指定位置本身：
 
