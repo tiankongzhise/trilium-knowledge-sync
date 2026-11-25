@@ -7,7 +7,7 @@
 | 仓库结构校验 | 必要文件、SKILL frontmatter、安全硬规则、文档链接 | 自动化 |
 | Python 单元测试 | token source、endpoint、HTTP client、upsert、verification | 自动化 |
 | mock ETAPI 集成测试 | CLI 子进程端到端 create/upsert/update/readback | 自动化 |
-| 安装脚本 smoke test | 临时 HOME/APPDATA 中 install/reinstall/uninstall | CI 自动化 |
+| 安装脚本 smoke test | 临时 HOME/APPDATA 中 install/reinstall/uninstall；隔离 target root 中删除路径全覆盖：副本无 force 不动、`-f/-Force` 替换为链接、uninstall 无 force 保留副本、有 force 删除副本、无 SKILL.md 目录守卫不删 | CI 自动化 |
 | PowerShell/Bash 语法 | `install.ps1`、`install.sh` | CI 自动化 |
 | 真实 Trilium 验证 | 用户本机 token + 真实 ETAPI | 手动/受控验证 |
 

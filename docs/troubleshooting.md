@@ -76,6 +76,10 @@ find-child '<parentNoteId>' '<exact-title>'
 3. 处理完后重试 upsert；或者如果明确知道要更新哪一篇，直接用精确 noteId 执行 `put-content` / `patch-note` 定点操作。
 4. 向用户报告时给出每个 noteId 对应哪篇笔记，由用户确认迁移方式。
 
+## 写入成功但进了错误的知识库（多实例）
+
+同时运行多个 Trilium 实例时，`healthcheck-url` 自动发现指向不确定，写入可能进错实例且核验照样通过。多实例环境必须显式 `--base-url`，见 [configuration.md](configuration.md) 的多实例警告。
+
 ## 写入成功但 Trilium UI 没看到
 
 可能原因：

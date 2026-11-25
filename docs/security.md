@@ -61,6 +61,13 @@ helper 不提供 `--token` 参数。支持的位置形式只有：
 
 从 Trilium `healthcheck-url` 文件自动发现的 endpoint 必须是 loopback 地址。常见本地端口探测也会先观察未认证的 `/etapi/app-info` 响应是否具有 Trilium 形状，再发送 token，避免把 token 直接发给恰好占用端口的无关本机服务。远程或反向代理 endpoint 必须由用户/调用方显式指定。
 
+已接受的残余风险（owner 决策 2026-11-25，使用时须知情）：
+
+- 端口探测的形状判断包含 `"Not authenticated"` 子串匹配，恰好返回该文案 401 的本机服务会被误判为 Trilium 并收到 token（仅限 loopback；形状检查防"巧合占用"，防不了本机"故意模仿"——能模仿的攻击者已具备本地执行能力）。
+- `healthcheck-url` 文件路径发现后不做形状验证直接信任（仅受 loopback 硬约束），因为它由 Trilium 自身写入。
+- 多实例 Trilium 下 healthcheck 指向不确定，可能静默连错知识库；多实例环境必须显式 `--base-url`（见 [configuration.md](configuration.md)）。
+- 缓解：固定单实例用户显式配置 `TRILIUM_ETAPI_URL` 作为主路径，端口探测仅作后备。
+
 ### ETAPI 原生写入
 
 ETAPI 会让 Trilium 正常维护：

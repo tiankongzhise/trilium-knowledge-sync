@@ -41,6 +41,10 @@ helper 按以下顺序寻找 ETAPI：
 3. Trilium `healthcheck-url` 文件（仅接受 loopback 地址）
 4. 常见本地端口探测：`37840`、`37740`、`8080`
 
+**建议固定单实例用户显式配置 `TRILIUM_ETAPI_URL` 作为主路径**（owner 决策 2026-11-25）：endpoint 是恒定事实，显式配置一次即消除探测的全部不确定性，端口探测只应作为后备。
+
+**多实例警告**：同时运行多个 Trilium 实例时，`healthcheck-url` 文件只有一个且指向不确定，helper 会静默连上其中一个知识库——写入可能进错库，且写后核验照样通过（核验不区分"是不是你想要的库"）。多实例环境**必须**显式 `--base-url` 指定目标实例，不得依赖自动发现。
+
 如果 healthcheck 文件指向非 loopback 地址，helper 会拒绝自动使用，避免把 token 发到未明确授权的主机；确有远程/反向代理需求时必须显式使用 `--base-url` 或 `TRILIUM_ETAPI_URL`。
 
 显式指定示例：

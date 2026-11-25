@@ -22,6 +22,8 @@
 - 发布策略确立为发版 PR 制：版本号以 helper 的 `VERSION` 常量为真相源，tag 与 CHANGELOG 必须一致；见 `docs/development.md`「发布流程」。
 - `upsert-note` 遇到同一父笔记下多个同名未删除笔记时拒绝执行，stderr 列出全部候选的 noteId 与辨识信息，不再静默选择第一个（owner 决策 2026-11-25）。
 - `docs/security.md` 新增「残余风险：agent 运行时遵守无法验证」显著披露。
+- CI 安装 smoke test 补齐删除路径覆盖（bash 与 PowerShell 双套）：副本无 force 不动、force 替换为链接、uninstall 无 force 保留副本、有 force 删除副本、无 `SKILL.md` 目录守卫不删（owner 决策 2026-11-25）。
+- `docs/security.md` 记录 endpoint 自动发现的已接受残余风险；`docs/configuration.md` 增加显式 URL 主路径建议与多实例静默错库警告（owner 决策 2026-11-25）。
 
 ### Changed
 
